@@ -1,90 +1,118 @@
-public class Ticket {
-    // Properties
-    private int id;
-    private String name;
-    private Category category;
-    private int point;
-    private String assignedEmployee;
-    private boolean isCompleted;
+import java.util.Scanner;
 
-    // Default Constructor
-    public Ticket() {
-        this.id = -1;
-        this.name = "Uninitialized Ticket";
-        this.category = Category.UNKNOWN;
-        this.point = 0;
-        this.assignedEmployee = ""; // Initially empty
-        this.isCompleted = false; // Initially false
-        System.out.println("Warning: Ticket object is not initialized properly. Please provide valid details.");
+abstract class BankAccount {
+    protected String accountNumber;
+    protected double balance;
+
+    public BankAccount(String accountNumber, double balance) {
+        this.accountNumber = accountNumber;
+        this.balance = balance;
     }
 
-    // Parameterized Constructor
-    public Ticket(int id, String name, Category category, int point) {
-        this.id = id;
-        this.name = name;
-        this.category = category;
-        this.point = point;
-        this.assignedEmployee = ""; // Initially empty
-        this.isCompleted = false; // Initially false
+    public void deposit(double amount) {
+        if (amount > 0) {
+            balance += amount;
+            System.out.println("Deposited: ₹" + amount + ", New Balance: ₹" + balance);
+        } else {
+            System.out.println("Invalid deposit amount.");
+        }
     }
 
-    // Getters
-    public int getId() {
-        return id;
+    public abstract void withdraw(double amount);
+}
+
+interface Transaction {
+    void transfer(BankAccount toAccount, double amount);
+}
+
+class SavingsAccount extends BankAccount implements Transaction {
+    public SavingsAccount(String accountNumber, double balance) {
+        super(accountNumber, balance);
     }
 
-    public String getName() {
-        return name;
+    // override
+    public void withdraw(double amount) {
+        if (balance - amount >= 500) {
+            balance -= amount;
+            System.out.println("Withdrawn: ₹" + amount + ", New Balance: ₹" + balance);
+        } else {
+            System.out.println("Withdrawal failed! Minimum balance of ₹500 required.");
+        }
     }
 
-    public Category getCategory() {
-        return category;
+    // override
+    public void transfer(BankAccount toAccount, double amount) {
+        if (balance - amount >= 500) {
+            balance -= amount;
+            toAccount.deposit(amount);
+            System.out.println("Transferred: ₹" + amount + " to " + toAccount.accountNumber);
+        } else {
+            System.out.println("Transfer failed! Minimum balance of ₹500 required.");
+        }
+    }
+}
+
+class CurrentAccount extends BankAccount implements Transaction {
+    private static final double OVERDRAFT_LIMIT = 5000;
+
+    public CurrentAccount(String accountNumber, double balance) {
+        super(accountNumber, balance);
     }
 
-    public int getPoint() {
-        return point;
+    // override
+    public void withdraw(double amount) {
+        if (balance - amount >= -OVERDRAFT_LIMIT) {
+            balance -= amount;
+            System.out.println("Withdrawn: ₹" + amount + ", New Balance: ₹" + balance);
+        } else {
+            System.out.println("Withdrawal failed! Overdraft limit exceeded.");
+        }
     }
 
-    public String getAssignedEmployee() {
-        return assignedEmployee;
+    // override
+    public void transfer(BankAccount toAccount, double amount) {
+        if (balance - amount >= -OVERDRAFT_LIMIT) {
+            balance -= amount;
+            toAccount.deposit(amount);
+            System.out.println("Transferred: ₹" + amount + " to " + toAccount.accountNumber);
+        } else {
+            System.out.println("Transfer failed! Overdraft limit exceeded.");
+        }
     }
+}
 
-    public boolean isCompleted() {
-        return isCompleted;
-    }
-
-    // Setters
-    public void assignEmployee(String employeeName) {
-        this.assignedEmployee = employeeName;
-    }
-
-    public void markCompleted() {
-        this.isCompleted = true;
-    }
-
-    // Display ticket details
-    public void displayTicketInfo() {
-        System.out.println("Ticket ID: " + id);
-        System.out.println("Description: " + name);
-        System.out.println("Category: " + category);
-        System.out.println("Complexity Point: " + point);
-        System.out.println("Assigned Employee: " + (assignedEmployee.isEmpty() ? "Not Assigned" : assignedEmployee));
-        System.out.println("Status: " + (isCompleted ? "Completed" : "Pending"));
-    }
-
-    // Enum for Category
-    public enum Category {
-        NETWORKING, SOFTWARE, HARDWARE, SECURITY, UNKNOWN
-    }
-
-    // Main method for testing
+public class Main {
     public static void main(String[] args) {
-        // Creating a Ticket with default constructor
-        Ticket defaultTicket = new Ticket();
-        defaultTicket.displayTicketInfo();
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.println("Hey Mam, Please enter the initial balance for the Savings Account: ");
+        double savingsBalance = getValidAmount(scanner);
+        BankAccount savings = new SavingsAccount("SAV123", savingsBalance);
 
-        // Creating a Ticket with parameters
-        Ticket ticket1 = new Ticket(101, "Fix network issue", Category.NETWORKING, 3);
-        ticket1.displayTicketInfo();
+        System.out.println("Hey Mam, Please enter the initial balance for the Current Account: ");
+        double currentBalance = getValidAmount(scanner);
+        BankAccount current = new CurrentAccount("CUR456", currentBalance);
+
+        savings.deposit(1000);
+        current.withdraw(3000);
+
+        ((Transaction) savings).transfer(current, 1500); // Explicit cast to Transaction
+        ((Transaction) current).transfer(savings, 6000); // Explicit cast to Transaction
+    }
+
+    private static double getValidAmount(Scanner scanner) {
+        double amount;
+        while (true) {
+            try {
+                amount = Double.parseDouble(scanner.nextLine());
+                if (amount >= 0) {
+                    return amount;
+                } else {
+                    System.out.println("Oops! Please enter a valid non-negative amount: ");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Oops! That doesn't seem like a valid number. Please try again: ");
+            }
+        }
     }
 }
